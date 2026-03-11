@@ -4,7 +4,9 @@ export interface Student {
   school: string;
   birthDate: string;
   phone: string;
+  emergencyPhone?: string;
   email: string;
+  obraSocial?: string;
   address: string;
   medicalCertificate: {
     status: 'active' | 'expired' | 'pending';
@@ -36,7 +38,9 @@ export interface StudentFormData {
   school: string;
   birthDate: string;
   phone: string;
+  emergencyPhone?: string;
   email: string;
+  obraSocial?: string;
   address: string;
   medicalCertificate: {
     status: 'active' | 'expired' | 'pending';

@@ -18,6 +18,8 @@ interface RegistrationFormData {
   email: string;
   medicalCertificateDate: string;
   school: string;
+  emergencyNumber: string;
+  healthInsurance: string;
   paymentDate: string;
   paymentMethod: string;
   amount: string;
@@ -40,6 +42,8 @@ export const RegistrationForm = ({ onRegistrationSuccess }: RegistrationFormProp
     email: "",
     medicalCertificateDate: "",
     school: "",
+    emergencyNumber: "",
+    healthInsurance: "",
     paymentDate: "",
     paymentMethod: "",
     amount: "",
@@ -64,6 +68,8 @@ export const RegistrationForm = ({ onRegistrationSuccess }: RegistrationFormProp
       email: "",
       medicalCertificateDate: "",
       school: "",
+      emergencyNumber: "",
+      healthInsurance: "",
       paymentDate: "",
       paymentMethod: "",
       amount: "",
@@ -109,7 +115,7 @@ export const RegistrationForm = ({ onRegistrationSuccess }: RegistrationFormProp
     setIsLoading(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      
+
       if (!user) {
         toast({
           title: "Error",
@@ -152,6 +158,8 @@ export const RegistrationForm = ({ onRegistrationSuccess }: RegistrationFormProp
           phone: formData.phone,
           email: formData.email,
           address: formData.address,
+          emergency_phone: formData.emergencyNumber,
+          health_insurance: formData.healthInsurance,
           school: formData.school || formData.contactName,
           level: null,
           medical_certificate_expiry_date: formData.medicalCertificateDate || null,
@@ -192,7 +200,7 @@ export const RegistrationForm = ({ onRegistrationSuccess }: RegistrationFormProp
           <UserPlus className="w-5 h-5 text-blue-500" />
           <h2 className="text-xl font-semibold text-foreground">Nueva Inscripción</h2>
         </div>
-        
+
         <div className="space-y-6">
           <div className="space-y-2">
             <Label htmlFor="nombre" className="text-sm font-medium text-foreground">
@@ -263,6 +271,19 @@ export const RegistrationForm = ({ onRegistrationSuccess }: RegistrationFormProp
           </div>
 
           <div className="space-y-2">
+            <Label htmlFor="emergencia" className="text-sm font-medium text-foreground">
+              Número de Emergencia
+            </Label>
+            <Input
+              id="emergencia"
+              value={formData.emergencyNumber}
+              onChange={(e) => handleInputChange("emergencyNumber", e.target.value)}
+              placeholder="Número de contacto de emergencia"
+              className="bg-gray-50 border-gray-200"
+            />
+          </div>
+
+          <div className="space-y-2">
             <Label htmlFor="contacto" className="text-sm font-medium text-foreground">
               Nombre de Contacto
             </Label>
@@ -285,6 +306,19 @@ export const RegistrationForm = ({ onRegistrationSuccess }: RegistrationFormProp
               value={formData.email}
               onChange={(e) => handleInputChange("email", e.target.value)}
               placeholder="correo@ejemplo.com"
+              className="bg-gray-50 border-gray-200"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="obraSocial" className="text-sm font-medium text-foreground">
+              Obra Social
+            </Label>
+            <Input
+              id="obraSocial"
+              value={formData.healthInsurance}
+              onChange={(e) => handleInputChange("healthInsurance", e.target.value)}
+              placeholder="Nombre de la obra social"
               className="bg-gray-50 border-gray-200"
             />
           </div>
@@ -313,7 +347,7 @@ export const RegistrationForm = ({ onRegistrationSuccess }: RegistrationFormProp
               <SelectTrigger className="bg-gray-50 border-gray-200">
                 <SelectValue placeholder="Jardín" />
               </SelectTrigger>
-               <SelectContent className="bg-white border border-gray-200 shadow-lg z-50">
+              <SelectContent className="bg-white border border-gray-200 shadow-lg z-50">
                 <SelectItem value="jardin">Jardín</SelectItem>
                 <SelectItem value="escuela">Escuela</SelectItem>
                 <SelectItem value="competencia">Competencia</SelectItem>
@@ -325,7 +359,7 @@ export const RegistrationForm = ({ onRegistrationSuccess }: RegistrationFormProp
             <Label className="text-sm font-medium text-foreground">
               Subir Certificado Médico
             </Label>
-            <div 
+            <div
               className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center bg-gray-50 hover:bg-gray-100 transition-colors cursor-pointer"
               onClick={() => document.getElementById('medical-certificate-input')?.click()}
             >
@@ -348,7 +382,7 @@ export const RegistrationForm = ({ onRegistrationSuccess }: RegistrationFormProp
             <Label className="text-sm font-medium text-foreground">
               Subir Foto de la Alumna
             </Label>
-            <div 
+            <div
               className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center bg-gray-50 hover:bg-gray-100 transition-colors cursor-pointer"
               onClick={() => document.getElementById('photo-input')?.click()}
             >
@@ -417,7 +451,7 @@ export const RegistrationForm = ({ onRegistrationSuccess }: RegistrationFormProp
           </div>
 
           <div className="pt-4">
-            <Button 
+            <Button
               onClick={handleSubmit}
               disabled={isLoading}
               className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 rounded-lg"

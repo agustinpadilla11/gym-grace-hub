@@ -11,6 +11,8 @@ interface Student {
   birth_date: string;
   phone: string;
   email: string;
+  emergency_phone: string;
+  health_insurance: string;
   address: string;
   school: string;
   level: string;
@@ -122,8 +124,10 @@ export const RegistrationsTable = ({ refreshTrigger }: RegistrationsTableProps) 
                     <TableCell>{formatDate(student.birth_date)}</TableCell>
                     <TableCell>
                       <div className="text-sm">
-                        <div>{student.phone || "N/A"}</div>
+                        <div>Tel: {student.phone || "N/A"}</div>
+                        {student.emergency_phone && <div className="text-blue-600">Emerg: {student.emergency_phone}</div>}
                         <div className="text-gray-500">{student.email || "N/A"}</div>
+                        {student.health_insurance && <div className="text-purple-600">OS: {student.health_insurance}</div>}
                       </div>
                     </TableCell>
                     <TableCell>{student.school || "N/A"}</TableCell>
@@ -131,8 +135,8 @@ export const RegistrationsTable = ({ refreshTrigger }: RegistrationsTableProps) 
                     <TableCell>{getStatusBadge(student.medical_certificate_status)}</TableCell>
                     <TableCell>{getStatusBadge(student.federation_status)}</TableCell>
                     <TableCell>
-                      {student.federation_amount ? 
-                        `$${student.federation_amount.toLocaleString("es-ES", { minimumFractionDigits: 2 })}` : 
+                      {student.federation_amount ?
+                        `$${student.federation_amount.toLocaleString("es-ES", { minimumFractionDigits: 2 })}` :
                         "N/A"
                       }
                     </TableCell>

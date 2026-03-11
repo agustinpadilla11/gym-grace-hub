@@ -38,6 +38,8 @@ export const StudentEditModal = ({ isOpen, onClose, student, onSave, isEditMode,
       paymentMethod: "transferencia"
     },
     level: "inicial",
+    emergencyPhone: "",
+    obraSocial: "",
     photo: ""
   });
 
@@ -62,6 +64,8 @@ export const StudentEditModal = ({ isOpen, onClose, student, onSave, isEditMode,
           paymentMethod: student.federation.paymentMethod || "transferencia"
         },
         level: student.level,
+        emergencyPhone: student.emergencyPhone || "",
+        obraSocial: student.obraSocial || "",
         photo: student.photo || ""
       });
     } else {
@@ -85,6 +89,8 @@ export const StudentEditModal = ({ isOpen, onClose, student, onSave, isEditMode,
           paymentMethod: "transferencia"
         },
         level: "inicial",
+        emergencyPhone: "",
+        obraSocial: "",
         photo: ""
       });
     }
@@ -147,6 +153,8 @@ export const StudentEditModal = ({ isOpen, onClose, student, onSave, isEditMode,
           paymentMethod: selectedStudent.federation.paymentMethod || "transferencia"
         },
         level: selectedStudent.level,
+        emergencyPhone: selectedStudent.emergencyPhone || "",
+        obraSocial: selectedStudent.obraSocial || "",
         photo: selectedStudent.photo || ""
       });
     }
@@ -161,7 +169,7 @@ export const StudentEditModal = ({ isOpen, onClose, student, onSave, isEditMode,
             {isEditMode ? "Editar Alumna" : "Agregar Nueva Alumna"}
           </DialogTitle>
         </DialogHeader>
-        
+
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
@@ -184,7 +192,7 @@ export const StudentEditModal = ({ isOpen, onClose, student, onSave, isEditMode,
                 />
               )}
             </div>
-            
+
             <div className="space-y-2">
               <Label htmlFor="photo">Foto del Alumno</Label>
               <div className="space-y-2">
@@ -213,7 +221,7 @@ export const StudentEditModal = ({ isOpen, onClose, student, onSave, isEditMode,
                 </Button>
               </div>
             </div>
-            
+
             <div className="space-y-2">
               <Label htmlFor="birthDate">Fecha de Nacimiento</Label>
               <Input
@@ -223,7 +231,7 @@ export const StudentEditModal = ({ isOpen, onClose, student, onSave, isEditMode,
                 onChange={(e) => handleInputChange('birthDate', e.target.value)}
               />
             </div>
-            
+
             <div className="space-y-2">
               <Label htmlFor="phone">Teléfono</Label>
               <Input
@@ -233,7 +241,17 @@ export const StudentEditModal = ({ isOpen, onClose, student, onSave, isEditMode,
                 placeholder="261-4567890"
               />
             </div>
-            
+
+            <div className="space-y-2">
+              <Label htmlFor="emergencyPhone">Número de Emergencia</Label>
+              <Input
+                id="emergencyPhone"
+                value={formData.emergencyPhone}
+                onChange={(e) => handleInputChange('emergencyPhone', e.target.value)}
+                placeholder="Número de contacto de emergencia"
+              />
+            </div>
+
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input
@@ -244,7 +262,17 @@ export const StudentEditModal = ({ isOpen, onClose, student, onSave, isEditMode,
                 placeholder="email@ejemplo.com"
               />
             </div>
-            
+
+            <div className="space-y-2">
+              <Label htmlFor="obraSocial">Obra Social</Label>
+              <Input
+                id="obraSocial"
+                value={formData.obraSocial}
+                onChange={(e) => handleInputChange('obraSocial', e.target.value)}
+                placeholder="Nombre de la obra social"
+              />
+            </div>
+
             <div className="space-y-2">
               <Label htmlFor="address">Dirección</Label>
               <Input
@@ -254,7 +282,7 @@ export const StudentEditModal = ({ isOpen, onClose, student, onSave, isEditMode,
                 placeholder="Av. San Martín 123"
               />
             </div>
-            
+
             <div className="space-y-2">
               <Label htmlFor="school">Escuela</Label>
               <Input
@@ -264,7 +292,7 @@ export const StudentEditModal = ({ isOpen, onClose, student, onSave, isEditMode,
                 placeholder="Nombre de la escuela"
               />
             </div>
-            
+
             <div className="space-y-2">
               <Label htmlFor="level">Nivel</Label>
               <Input
@@ -275,15 +303,15 @@ export const StudentEditModal = ({ isOpen, onClose, student, onSave, isEditMode,
               />
             </div>
           </div>
-          
+
           <div className="space-y-4">
             <h3 className="text-lg font-semibold">Certificado Médico</h3>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="medicalStatus">Estado del Certificado</Label>
-                <Select 
-                  value={formData.medicalCertificate.status} 
+                <Select
+                  value={formData.medicalCertificate.status}
                   onValueChange={(value) => handleInputChange('medicalCertificate.status', value)}
                 >
                   <SelectTrigger>
@@ -296,7 +324,7 @@ export const StudentEditModal = ({ isOpen, onClose, student, onSave, isEditMode,
                   </SelectContent>
                 </Select>
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="medicalExpiryDate">Fecha de Vencimiento</Label>
                 <Input
@@ -306,7 +334,7 @@ export const StudentEditModal = ({ isOpen, onClose, student, onSave, isEditMode,
                   onChange={(e) => handleInputChange('medicalCertificate.expiryDate', e.target.value)}
                 />
               </div>
-              
+
               <div className="space-y-2 md:col-span-2">
                 <Label htmlFor="medicalFile">Archivo del Certificado Médico</Label>
                 <div className="space-y-2">
@@ -356,15 +384,15 @@ export const StudentEditModal = ({ isOpen, onClose, student, onSave, isEditMode,
               </div>
             </div>
           </div>
-          
+
           <div className="space-y-4">
             <h3 className="text-lg font-semibold">Información de Federación</h3>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="federationStatus">Estado de Federación</Label>
-                <Select 
-                  value={formData.federation.status} 
+                <Select
+                  value={formData.federation.status}
                   onValueChange={(value) => handleInputChange('federation.status', value)}
                 >
                   <SelectTrigger>
@@ -377,7 +405,7 @@ export const StudentEditModal = ({ isOpen, onClose, student, onSave, isEditMode,
                   </SelectContent>
                 </Select>
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="federationPaymentDate">Fecha de Pago/Actualización</Label>
                 <Input
@@ -387,7 +415,7 @@ export const StudentEditModal = ({ isOpen, onClose, student, onSave, isEditMode,
                   onChange={(e) => handleInputChange('federation.paymentDate', e.target.value)}
                 />
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="federationAmount">Monto</Label>
                 <Input
@@ -398,11 +426,11 @@ export const StudentEditModal = ({ isOpen, onClose, student, onSave, isEditMode,
                   placeholder="0"
                 />
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="federationPaymentMethod">Medio de Pago</Label>
-                <Select 
-                  value={formData.federation.paymentMethod} 
+                <Select
+                  value={formData.federation.paymentMethod}
                   onValueChange={(value) => handleInputChange('federation.paymentMethod', value)}
                 >
                   <SelectTrigger>
@@ -416,7 +444,7 @@ export const StudentEditModal = ({ isOpen, onClose, student, onSave, isEditMode,
               </div>
             </div>
           </div>
-          
+
           <div className="flex justify-end space-x-4">
             <Button type="button" variant="outline" onClick={onClose}>
               Cancelar
