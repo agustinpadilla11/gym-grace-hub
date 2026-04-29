@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
-import { CreditCard, Search, TrendingUp, FileSpreadsheet, Upload, Plus, Download } from "lucide-react";
+import { CreditCard, Search, TrendingUp, FileSpreadsheet, Upload, Plus, Download, Trash2 } from "lucide-react";
 import * as XLSX from 'xlsx';
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer } from "recharts";
 import { supabase } from "@/integrations/supabase/client";
@@ -175,6 +175,35 @@ export const Cuotas = () => {
       });
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleDeleteCuota = async (id: string) => {
+    if (!confirm("¿Estás seguro de que deseas eliminar este registro de pago?")) {
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('cuotas')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+
+      toast({
+        title: "¡Éxito!",
+        description: "El registro de pago ha sido eliminado",
+      });
+
+      await fetchCuotas();
+    } catch (error) {
+      console.error('Error deleting cuota:', error);
+      toast({
+        title: "Error",
+        description: "Hubo un problema al eliminar el registro",
+        variant: "destructive",
+      });
     }
   };
 
@@ -476,6 +505,7 @@ export const Cuotas = () => {
                 <TableHead>Fecha Pago</TableHead>
                 <TableHead>Vencimiento</TableHead>
                 <TableHead>Estado</TableHead>
+                <TableHead className="text-right">Acciones</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -491,6 +521,16 @@ export const Cuotas = () => {
                     <span className={`font-medium ${cuota.estado === 'pagado' ? 'text-green-600' : 'text-red-600'}`}>
                       {cuota.estado}
                     </span>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                      onClick={() => handleDeleteCuota(cuota.id)}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
                   </TableCell>
                 </TableRow>
               ))}
