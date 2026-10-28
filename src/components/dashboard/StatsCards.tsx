@@ -7,7 +7,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 
 export const StatsCards = () => {
-  const [selectedMonth, setSelectedMonth] = useState("2026-01");
+  const currentMonthStr = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`;
+  const [selectedMonth, setSelectedMonth] = useState(currentMonthStr);
   const [selectedModal, setSelectedModal] = useState<{
     isOpen: boolean;
     type: string;
@@ -209,28 +210,30 @@ export const StatsCards = () => {
           </CardHeader>
         </Card>
 
-        {dashboardStats.map((stat, index) => (
-          <Card 
-            key={index} 
-            className={`border-0 ${stat.bgColor} text-white shadow-sm hover:shadow-lg transition-all duration-300 cursor-pointer transform hover:scale-105`}
-            onClick={() => handleCardClick(stat)}
-          >
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-lg font-medium text-white/90 mb-2">
-                    {stat.title}
-                  </h3>
-                  <div className="text-3xl font-bold text-white">{stat.value}</div>
-                  <p className="text-sm text-white/70 mt-1">Click para ver detalles</p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {dashboardStats.map((stat, index) => (
+            <Card 
+              key={index} 
+              className={`border-0 ${stat.bgColor} text-white shadow-sm hover:shadow-lg transition-all duration-300 cursor-pointer transform hover:scale-105`}
+              onClick={() => handleCardClick(stat)}
+            >
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-lg font-medium text-white/90 mb-2">
+                      {stat.title}
+                    </h3>
+                    <div className="text-3xl font-bold text-white">{stat.value}</div>
+                    <p className="text-sm text-white/70 mt-1">Click para ver detalles</p>
+                  </div>
+                  <div className="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center">
+                    <stat.icon className="w-6 h-6 text-white" />
+                  </div>
                 </div>
-                <div className="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center">
-                  <stat.icon className="w-6 h-6 text-white" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+              </CardContent>
+            </Card>
+          ))}
+        </div>
       </div>
       
       <DetailModal
@@ -238,6 +241,7 @@ export const StatsCards = () => {
         onClose={closeModal}
         type={selectedModal.type}
         title={selectedModal.title}
+        selectedMonth={selectedMonth}
       />
     </>
   );

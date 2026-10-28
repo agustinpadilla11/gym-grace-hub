@@ -52,6 +52,7 @@ const chartConfig = {
 };
 
 interface FormData {
+  student_id: string;
   alumna: string;
   grupo: string;
   monto: string;
@@ -65,18 +66,36 @@ export const Cuotas = () => {
   const [modalOpen, setModalOpen] = useState(false);
   const [cuotas, setCuotas] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [students, setStudents] = useState<any[]>([]);
   const [formData, setFormData] = useState<FormData>({
+    student_id: "",
     alumna: "",
     grupo: "jardin",
     monto: "",
     medio: "transferencia",
-    fecha: "",
+    fecha: new Date().toISOString().split('T')[0],
     vencimiento: ""
   });
 
   useEffect(() => {
     fetchCuotas();
+    fetchStudents();
   }, []);
+
+  const fetchStudents = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data, error } = await supabase
+        .from('students')
+        .select('id, full_name, level')
+        .order('full_name');
+      if (error) throw error;
+      setStudents(data || []);
+    } catch (error) {
+      console.error('Error fetching students:', error);
+    }
+  };
 
   const fetchCuotas = async () => {
     try {
@@ -107,11 +126,12 @@ export const Cuotas = () => {
 
   const clearForm = () => {
     setFormData({
+      student_id: "",
       alumna: "",
       grupo: "jardin",
       monto: "",
       medio: "transferencia",
-      fecha: "",
+      fecha: new Date().toISOString().split('T')[0],
       vencimiento: ""
     });
   };
@@ -143,18 +163,31 @@ export const Cuotas = () => {
       const fechaVencimiento = new Date(fechaPago);
       fechaVencimiento.setMonth(fechaVencimiento.getMonth() + 1);
 
-      const { error } = await supabase
+      const insertPayload: Record<string, any> = {
+        user_id: user.id,
+        alumna: formData.alumna,
+        grupo: formData.grupo,
+        monto: parseFloat(formData.monto),
+        medio: formData.medio,
+        fecha_pago: formData.fecha,
+        vencimiento: fechaVencimiento.toISOString().split('T')[0],
+        estado: 'pagado'
+      };
+
+      if (formData.student_id) {
+        insertPayload.student_id = formData.student_id;
+      }
+
+      let { error } = await supabase
         .from('cuotas')
-        .insert({
-          user_id: user.id,
-          alumna: formData.alumna,
-          grupo: formData.grupo,
-          monto: parseFloat(formData.monto),
-          medio: formData.medio,
-          fecha_pago: formData.fecha,
-          vencimiento: fechaVencimiento.toISOString().split('T')[0],
-          estado: 'pagado'
-        });
+        .insert(insertPayload as any);
+
+      // Si falla porque la columna student_id no existe en la base de datos, reintentar sin ella
+      if (error && (error.message?.includes('student_id') || (error as any).code === '42703')) {
+        delete insertPayload.student_id;
+        const retry = await supabase.from('cuotas').insert(insertPayload as any);
+        error = retry.error;
+      }
 
       if (error) throw error;
 
@@ -375,14 +408,30 @@ export const Cuotas = () => {
             </DialogHeader>
             <div className="space-y-4 py-4">
               <div className="space-y-2">
-                <Label htmlFor="alumna">Alumna <span className="text-red-500">*</span></Label>
-                <Input
-                  id="alumna"
-                  value={formData.alumna}
-                  onChange={(e) => handleInputChange("alumna", e.target.value)}
-                  placeholder="Escribe el nombre de la alumna..."
-                  className="w-full"
-                />
+                <Label htmlFor="student_id">Alumna <span className="text-red-500">*</span></Label>
+                <Select 
+                  value={formData.student_id} 
+                  onValueChange={(value) => {
+                    const student = students.find(s => s.id === value);
+                    setFormData(prev => ({
+                      ...prev,
+                      student_id: value,
+                      alumna: student?.full_name || "",
+                      grupo: student?.level || prev.grupo
+                    }));
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleccionar alumna..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {students.map(student => (
+                      <SelectItem key={student.id} value={student.id}>
+                        {student.full_name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="grupo">Grupo <span className="text-red-500">*</span></Label>

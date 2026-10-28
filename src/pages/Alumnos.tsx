@@ -20,6 +20,7 @@ export const Alumnos = () => {
   const [searchValue, setSearchValue] = useState("");
   const [displayedStudent, setDisplayedStudent] = useState<Student | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [monthlyPayments, setMonthlyPayments] = useState<Record<string, any>>({});
 
   useEffect(() => {
     fetchStudents();
@@ -44,6 +45,8 @@ export const Alumnos = () => {
         school: student.school || "",
         birthDate: student.birth_date || "",
         phone: student.phone || "",
+        emergencyPhone: (student as any).emergency_phone || "",
+        obraSocial: (student as any).health_insurance || "",
         email: student.email || "",
         address: student.address || "",
         medicalCertificate: {
@@ -65,6 +68,33 @@ export const Alumnos = () => {
       setStudents(mappedStudents);
       if (mappedStudents.length > 0 && !displayedStudent) {
         setDisplayedStudent(mappedStudents[0]);
+      }
+
+      // Fetch cuotas for current month
+      const currentMonth = new Date().getMonth() + 1;
+      const currentYear = new Date().getFullYear();
+      
+      const { data: cuotasData, error: cuotasError } = await supabase
+        .from('cuotas')
+        .select('*')
+        .gte('fecha_pago', `${currentYear}-${String(currentMonth).padStart(2, '0')}-01`);
+
+      if (!cuotasError && cuotasData) {
+        const payments: Record<string, any> = {};
+        cuotasData.forEach(c => {
+          if (c.student_id) {
+            payments[c.student_id] = c;
+          } else if (c.alumna) {
+            // Fallback por nombre si la columna student_id aún no está en cuotas
+            const match = mappedStudents.find(
+              s => s.fullName.trim().toLowerCase() === c.alumna.trim().toLowerCase()
+            );
+            if (match) {
+              payments[match.id] = c;
+            }
+          }
+        });
+        setMonthlyPayments(payments);
       }
     } catch (error) {
       console.error('Error fetching students:', error);
@@ -123,6 +153,8 @@ export const Alumnos = () => {
             phone: data.phone || null,
             email: data.email || null,
             address: data.address || null,
+            emergency_phone: data.emergencyPhone || null,
+            health_insurance: data.obraSocial || null,
             medical_certificate_status: data.medicalCertificate.status,
             medical_certificate_expiry_date: data.medicalCertificate.expiryDate || null,
             medical_certificate_file: data.medicalCertificate.file || null,
@@ -132,7 +164,7 @@ export const Alumnos = () => {
             federation_payment_method: data.federation.paymentMethod,
             level: data.level,
             photo: data.photo || null,
-          })
+          } as any)
           .eq('id', selectedStudent.id)
           .eq('user_id', user.id);
 
@@ -170,6 +202,8 @@ export const Alumnos = () => {
             phone: data.phone || null,
             email: data.email || null,
             address: data.address || null,
+            emergency_phone: data.emergencyPhone || null,
+            health_insurance: data.obraSocial || null,
             medical_certificate_status: data.medicalCertificate.status,
             medical_certificate_expiry_date: data.medicalCertificate.expiryDate || null,
             medical_certificate_file: data.medicalCertificate.file || null,
@@ -179,7 +213,7 @@ export const Alumnos = () => {
             federation_payment_method: data.federation.paymentMethod,
             level: data.level,
             photo: data.photo || null,
-          })
+          } as any)
           .select()
           .single();
 
@@ -242,16 +276,60 @@ export const Alumnos = () => {
         <Card className="border-0 shadow-sm bg-card">
           <CardContent className="p-8">
             <div className="flex items-start gap-6">
-              <Avatar className="w-20 h-20 bg-pink-500 text-white">
-                <AvatarFallback className="bg-pink-500 text-white text-lg font-semibold">
-                  {currentStudent.fullName ? currentStudent.fullName.split(' ').map(n => n[0]).join('').toUpperCase() : 'NA'}
-                </AvatarFallback>
+              <Avatar className="w-24 h-24 border-2 border-primary/20 shadow-lg">
+                {currentStudent.photo ? (
+                  <img src={currentStudent.photo} alt={currentStudent.fullName} className="w-full h-full object-cover" />
+                ) : (
+                  <AvatarFallback className="bg-gradient-to-br from-purple-500 to-pink-500 text-white text-2xl font-bold">
+                    {currentStudent.fullName ? currentStudent.fullName.split(' ').map(n => n[0]).join('').toUpperCase() : 'NA'}
+                  </AvatarFallback>
+                )}
               </Avatar>
               
               <div className="flex-1 space-y-4">
-                <div>
-                  <h2 className="text-2xl font-bold text-foreground">{currentStudent.fullName}</h2>
-                  <p className="text-muted-foreground">{currentStudent.school}</p>
+                <div className="flex justify-between items-start">
+                  <div>
+                    <h2 className="text-3xl font-bold text-foreground">{currentStudent.fullName}</h2>
+                    <p className="text-muted-foreground font-medium">{currentStudent.school}</p>
+                  </div>
+                  
+                  {/* Monthly Payment Status */}
+                  <div className="text-right">
+                    {(() => {
+                      const now = new Date();
+                      const currentMonth = now.getMonth(); // 0-indexed
+                      const isMayOrLater = currentMonth >= 4; // Mayo is index 4
+                      const isAfter15 = now.getDate() > 15;
+                      const payment = monthlyPayments[currentStudent.id];
+                      
+                      if (payment) {
+                        return (
+                          <div className="space-y-1">
+                            <Badge className="bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-1 text-xs font-bold uppercase tracking-wider">
+                              Cuota al día (Pagado)
+                            </Badge>
+                            <p className="text-[10px] text-emerald-600 font-bold uppercase">
+                              Pagó: ${payment.monto} - {new Date(payment.fecha_pago).toLocaleDateString()}
+                            </p>
+                          </div>
+                        );
+                      } else if (isMayOrLater) {
+                        return (
+                          <div className="space-y-1">
+                            <Badge variant="destructive" className="px-3 py-1 text-xs font-bold uppercase tracking-wider animate-pulse">
+                              Cuota Adeudada
+                            </Badge>
+                            {isAfter15 && (
+                              <p className="text-[10px] text-red-600 font-bold uppercase">
+                                Alerta: Fuera de término
+                              </p>
+                            )}
+                          </div>
+                        );
+                      }
+                      return null;
+                    })()}
+                  </div>
                 </div>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
@@ -331,14 +409,14 @@ export const Alumnos = () => {
                   </div>
                 </div>
                 
-                <div className="flex gap-3 pt-4">
-                  <Button onClick={handleViewHistory} variant="default" className="flex-1">
+                <div className="flex gap-3 pt-6">
+                  <Button onClick={handleViewHistory} variant="outline" className="flex-1 border-primary/20 hover:bg-primary/5 transition-all">
                     <Eye className="w-4 h-4 mr-2" />
-                    Ver Historial
+                    Historial de Pagos
                   </Button>
-                  <Button onClick={handleEdit} variant="outline" className="flex-1">
+                  <Button onClick={handleEdit} className="flex-1 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white shadow-md transition-all">
                     <Edit className="w-4 h-4 mr-2" />
-                    Editar
+                    Actualizar Datos
                   </Button>
                 </div>
               </div>

@@ -14,15 +14,31 @@ interface PassModalProps {
 export const PassModal = ({ onPassCreated }: PassModalProps) => {
   const [open, setOpen] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState("");
+  const [studentsList, setStudentsList] = useState<{ id: string; full_name: string }[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
     gimnasioTraspaso: '',
-    fecha: '',
+    fecha: new Date().toISOString().split('T')[0],
     monto: '',
     medioPago: ''
   });
   
   const { toast } = useToast();
+
+  useEffect(() => {
+    if (open) {
+      const fetchStudents = async () => {
+        const { data } = await supabase
+          .from('students')
+          .select('id, full_name')
+          .order('full_name');
+        if (data) {
+          setStudentsList(data);
+        }
+      };
+      fetchStudents();
+    }
+  }, [open]);
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -128,11 +144,9 @@ export const PassModal = ({ onPassCreated }: PassModalProps) => {
               required
             />
             <datalist id="students-list">
-              <option value="Ana García" />
-              <option value="Sofía López" />
-              <option value="María Rodríguez" />
-              <option value="Carmen Silva" />
-              <option value="Lucía Martín" />
+              {studentsList.map(s => (
+                <option key={s.id} value={s.full_name} />
+              ))}
             </datalist>
           </div>
           

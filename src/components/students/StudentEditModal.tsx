@@ -6,6 +6,9 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Student, StudentFormData } from "@/types/student";
 import { StudentAutocomplete } from "./StudentAutocomplete";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "@/hooks/use-toast";
+import { Upload, X } from "lucide-react";
 
 interface StudentEditModalProps {
   isOpen: boolean;
@@ -96,11 +99,60 @@ export const StudentEditModal = ({ isOpen, onClose, student, onSave, isEditMode,
     }
   }, [student, isEditMode, isOpen]);
 
+  const uploadFile = async (file: File, bucket: string, path: string): Promise<string | null> => {
+    const { data, error } = await supabase.storage
+      .from(bucket)
+      .upload(path, file, {
+        cacheControl: '3600',
+        upsert: true
+      });
+
+    if (error) {
+      console.error(`Error uploading file to ${bucket}:`, error);
+      return null;
+    }
+
+    const { data: { publicUrl } } = supabase.storage
+      .from(bucket)
+      .getPublicUrl(data.path);
+
+    return publicUrl;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     await onSave(formData);
-    if (!isLoading) {
-      onClose();
+    onClose();
+  };
+
+  const handleFileChange = async (field: 'photo' | 'medicalCertificate.file', file: File | null) => {
+    if (!file) return;
+
+    try {
+      const bucket = field === 'photo' ? 'student-photos' : 'medical-certificates';
+      const timestamp = Date.now();
+      const fileName = `${formData.fullName.replace(/\s+/g, '_')}_${timestamp}_${file.name}`;
+      
+      const publicUrl = await uploadFile(file, bucket, fileName);
+      
+      if (publicUrl) {
+        if (field === 'photo') {
+          handleInputChange('photo', publicUrl);
+        } else {
+          handleInputChange('medicalCertificate.file', publicUrl);
+        }
+        toast({
+          title: "Archivo cargado",
+          description: "El archivo se ha subido correctamente.",
+        });
+      }
+    } catch (error) {
+      console.error("Error uploading file:", error);
+      toast({
+        title: "Error",
+        description: "No se pudo subir el archivo.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -194,31 +246,32 @@ export const StudentEditModal = ({ isOpen, onClose, student, onSave, isEditMode,
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="photo">Foto del Alumno</Label>
-              <div className="space-y-2">
-                <Input
-                  id="photo"
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) {
-                      const reader = new FileReader();
-                      reader.onloadend = () => {
-                        handleInputChange('photo', reader.result as string);
-                      };
-                      reader.readAsDataURL(file);
-                    }
-                  }}
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleInputChange('photo', '')}
-                >
-                  Modificar Foto
-                </Button>
+              <Label htmlFor="photo">Foto de la Alumna</Label>
+              <div className="flex items-center gap-4">
+                {formData.photo && (
+                  <div className="relative w-16 h-16 rounded-lg overflow-hidden border">
+                    <img src={formData.photo} alt="Vista previa" className="w-full h-full object-cover" />
+                    <button 
+                      type="button"
+                      onClick={() => handleInputChange('photo', '')}
+                      className="absolute top-0 right-0 bg-red-500 text-white p-0.5 rounded-bl"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                )}
+                <div className="flex-1">
+                  <Input
+                    id="photo"
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => handleFileChange('photo', e.target.files?.[0] || null)}
+                    className="cursor-pointer"
+                  />
+                  <p className="text-[10px] text-muted-foreground mt-1 uppercase font-bold tracking-wider">
+                    Formato JPG, PNG. Máximo 2MB.
+                  </p>
+                </div>
               </div>
             </div>
 
@@ -342,16 +395,7 @@ export const StudentEditModal = ({ isOpen, onClose, student, onSave, isEditMode,
                     id="medicalFile"
                     type="file"
                     accept=".pdf,.jpg,.jpeg,.png"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) {
-                        const reader = new FileReader();
-                        reader.onloadend = () => {
-                          handleInputChange('medicalCertificate.file', reader.result as string);
-                        };
-                        reader.readAsDataURL(file);
-                      }
-                    }}
+                    onChange={(e) => handleFileChange('medicalCertificate.file', e.target.files?.[0] || null)}
                   />
                   {formData.medicalCertificate.file && (
                     <div className="flex items-center space-x-2">

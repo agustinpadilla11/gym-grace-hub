@@ -1,52 +1,181 @@
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { CalendarDays, User, DollarSign, AlertCircle } from "lucide-react";
+import { CalendarDays, User, DollarSign, AlertCircle, Loader2 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
 interface DetailModalProps {
   isOpen: boolean;
   onClose: () => void;
   type: string;
   title: string;
+  selectedMonth?: string;
 }
 
-export const DetailModal = ({ isOpen, onClose, type, title }: DetailModalProps) => {
-  const getDetailData = (type: string) => {
-    switch (type) {
-      case "cuotas-al-dia":
-        return [
-          { nombre: "María González", monto: "$25,000", fechaPago: "15/01/2026", estado: "Pagado" },
-          { nombre: "Ana Rodríguez", monto: "$25,000", fechaPago: "20/01/2026", estado: "Pagado" },
-          { nombre: "Sofia Martín", monto: "$30,000", fechaPago: "18/01/2026", estado: "Pagado" },
-          { nombre: "Valentina López", monto: "$25,000", fechaPago: "22/01/2026", estado: "Pagado" },
-          { nombre: "Camila Torres", monto: "$25,000", fechaPago: "25/01/2026", estado: "Pagado" },
-          { nombre: "Isabella Díaz", monto: "$30,000", fechaPago: "12/01/2026", estado: "Pagado" },
-          { nombre: "Emma Fernández", monto: "$25,000", fechaPago: "28/01/2026", estado: "Pagado" },
-          { nombre: "Olivia Ruiz", monto: "$25,000", fechaPago: "16/01/2026", estado: "Pagado" },
-          { nombre: "Mía Herrera", monto: "$30,000", fechaPago: "19/01/2026", estado: "Pagado" },
-          { nombre: "Luna Morales", monto: "$25,000", fechaPago: "24/01/2026", estado: "Pagado" },
-          { nombre: "Victoria Ramos", monto: "$25,000", fechaPago: "21/01/2026", estado: "Pagado" },
-          { nombre: "Zoe Castro", monto: "$30,000", fechaPago: "26/01/2026", estado: "Pagado" }
+export const DetailModal = ({ isOpen, onClose, type, title, selectedMonth }: DetailModalProps) => {
+  const [data, setData] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    if (isOpen && type) {
+      loadRealData();
+    }
+  }, [isOpen, type, selectedMonth]);
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('es-AR', {
+      style: 'currency',
+      currency: 'ARS',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(amount);
+  };
+
+  const loadRealData = async () => {
+    setIsLoading(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setData([]);
+        return;
+      }
+
+      const monthStr = selectedMonth || `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`;
+      const [year, month] = monthStr.split('-');
+      const startDate = new Date(parseInt(year), parseInt(month) - 1, 1).toISOString().split('T')[0];
+      const endDate = new Date(parseInt(year), parseInt(month), 0).toISOString().split('T')[0];
+      const today = new Date();
+
+      if (type === "cuotas-al-dia") {
+        const { data: cuotas } = await supabase
+          .from('cuotas')
+          .select('*')
+          .eq('user_id', user.id)
+          .eq('estado', 'pagado')
+          .gte('fecha_pago', startDate)
+          .lte('fecha_pago', endDate)
+          .order('fecha_pago', { ascending: false });
+
+        setData(
+          (cuotas || []).map(c => ({
+            nombre: c.alumna,
+            monto: formatCurrency(c.monto),
+            fechaPago: c.fecha_pago ? new Date(c.fecha_pago).toLocaleDateString('es-AR') : '-',
+            estado: 'Pagado'
+          }))
+        );
+      } else if (type === "cuotas-vencidas") {
+        const { data: cuotas } = await supabase
+          .from('cuotas')
+          .select('*')
+          .eq('user_id', user.id)
+          .neq('estado', 'pagado')
+          .lt('vencimiento', today.toISOString().split('T')[0])
+          .order('vencimiento', { ascending: true });
+
+        setData(
+          (cuotas || []).map(c => {
+            const venc = c.vencimiento ? new Date(c.vencimiento) : today;
+            const diffDays = Math.max(1, Math.floor((today.getTime() - venc.getTime()) / (1000 * 60 * 60 * 24)));
+            return {
+              nombre: c.alumna,
+              monto: formatCurrency(c.monto),
+              fechaVencimiento: c.vencimiento ? new Date(c.vencimiento).toLocaleDateString('es-AR') : '-',
+              diasVencido: diffDays
+            };
+          })
+        );
+      } else if (type === "certificados-vencidos") {
+        const { data: students } = await supabase
+          .from('students')
+          .select('*')
+          .eq('user_id', user.id)
+          .not('medical_certificate_expiry_date', 'is', null)
+          .lt('medical_certificate_expiry_date', today.toISOString().split('T')[0])
+          .order('medical_certificate_expiry_date', { ascending: true });
+
+        setData(
+          (students || []).map(s => {
+            const exp = new Date(s.medical_certificate_expiry_date);
+            const diffDays = Math.max(1, Math.floor((today.getTime() - exp.getTime()) / (1000 * 60 * 60 * 24)));
+            return {
+              nombre: s.full_name,
+              tipo: "Certificado Médico",
+              fechaVencimiento: exp.toLocaleDateString('es-AR'),
+              diasVencido: diffDays
+            };
+          })
+        );
+      } else if (type === "ingresos") {
+        const [cuotasRes, pasesRes, merchRes, torneosRes] = await Promise.all([
+          supabase
+            .from('cuotas')
+            .select('monto')
+            .eq('user_id', user.id)
+            .eq('estado', 'pagado')
+            .gte('fecha_pago', startDate)
+            .lte('fecha_pago', endDate),
+          supabase
+            .from('pases')
+            .select('monto')
+            .eq('user_id', user.id)
+            .gte('fecha', startDate)
+            .lte('fecha', endDate),
+          supabase
+            .from('merchandising_orders')
+            .select('monto')
+            .eq('user_id', user.id)
+            .gte('fecha', startDate)
+            .lte('fecha', endDate),
+          supabase
+            .from('tournament_participants')
+            .select('payment_amount')
+            .eq('user_id', user.id)
+            .eq('payment_status', 'paid')
+            .gte('payment_date', startDate)
+            .lte('payment_date', endDate)
+        ]);
+
+        const cTotal = (cuotasRes.data || []).reduce((acc, c) => acc + (c.monto || 0), 0);
+        const pTotal = (pasesRes.data || []).reduce((acc, p) => acc + (p.monto || 0), 0);
+        const mTotal = (merchRes.data || []).reduce((acc, m) => acc + (m.monto || 0), 0);
+        const tTotal = (torneosRes.data || []).reduce((acc, t) => acc + (t.payment_amount || 0), 0);
+        const total = cTotal + pTotal + mTotal + tTotal;
+
+        const breakdown = [
+          {
+            concepto: "Cuotas Mensuales",
+            monto: formatCurrency(cTotal),
+            cantidad: (cuotasRes.data || []).length.toString(),
+            porcentaje: total > 0 ? `${((cTotal / total) * 100).toFixed(1)}%` : "0%"
+          },
+          {
+            concepto: "Inscripciones / Pases",
+            monto: formatCurrency(pTotal),
+            cantidad: (pasesRes.data || []).length.toString(),
+            porcentaje: total > 0 ? `${((pTotal / total) * 100).toFixed(1)}%` : "0%"
+          },
+          {
+            concepto: "Torneos",
+            monto: formatCurrency(tTotal),
+            cantidad: (torneosRes.data || []).length.toString(),
+            porcentaje: total > 0 ? `${((tTotal / total) * 100).toFixed(1)}%` : "0%"
+          },
+          {
+            concepto: "Merchandising",
+            monto: formatCurrency(mTotal),
+            cantidad: (merchRes.data || []).length.toString(),
+            porcentaje: total > 0 ? `${((mTotal / total) * 100).toFixed(1)}%` : "0%"
+          }
         ];
-      case "cuotas-vencidas":
-        return [
-          { nombre: "Lucía Mendoza", monto: "$25,000", fechaVencimiento: "10/01/2026", diasVencido: 19 },
-          { nombre: "Martina Silva", monto: "$30,000", fechaVencimiento: "05/01/2026", diasVencido: 24 },
-          { nombre: "Renata Vargas", monto: "$25,000", fechaVencimiento: "15/01/2026", diasVencido: 14 }
-        ];
-      case "certificados-vencidos":
-        return [
-          { nombre: "Catalina Jiménez", fechaVencimiento: "20/12/2025", diasVencido: 40, tipo: "Certificado Médico" },
-          { nombre: "Antonella Peña", fechaVencimiento: "30/12/2025", diasVencido: 30, tipo: "Certificado Médico" }
-        ];
-      case "ingresos":
-        return [
-          { concepto: "Cuotas Mensuales", monto: "$300,000", cantidad: "124", porcentaje: "95.2%" },
-          { concepto: "Inscripciones", monto: "$8,000", cantidad: "8", porcentaje: "2.5%" },
-          { concepto: "Merchandising", monto: "$7,500", cantidad: "15", porcentaje: "2.3%" }
-        ];
-      default:
-        return [];
+        setData(breakdown);
+      }
+    } catch (err) {
+      console.error("Error loading detail data:", err);
+      setData([]);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -84,7 +213,7 @@ export const DetailModal = ({ isOpen, onClose, type, title }: DetailModalProps) 
           <TableRow>
             <TableHead>Concepto</TableHead>
             <TableHead><DollarSign className="w-4 h-4 inline mr-2" />Monto</TableHead>
-            <TableHead><User className="w-4 h-4 inline mr-2" />Cantidad Alumnas</TableHead>
+            <TableHead><User className="w-4 h-4 inline mr-2" />Registros</TableHead>
             <TableHead>Porcentaje</TableHead>
           </TableRow>
         );
@@ -93,10 +222,10 @@ export const DetailModal = ({ isOpen, onClose, type, title }: DetailModalProps) 
     }
   };
 
-  const renderTableRows = (type: string, data: any[]) => {
+  const renderTableRows = (type: string, rows: any[]) => {
     switch (type) {
       case "cuotas-al-dia":
-        return data.map((item, index) => (
+        return rows.map((item, index) => (
           <TableRow key={index}>
             <TableCell className="font-medium">{item.nombre}</TableCell>
             <TableCell>{item.monto}</TableCell>
@@ -109,7 +238,7 @@ export const DetailModal = ({ isOpen, onClose, type, title }: DetailModalProps) 
           </TableRow>
         ));
       case "cuotas-vencidas":
-        return data.map((item, index) => (
+        return rows.map((item, index) => (
           <TableRow key={index}>
             <TableCell className="font-medium">{item.nombre}</TableCell>
             <TableCell>{item.monto}</TableCell>
@@ -122,7 +251,7 @@ export const DetailModal = ({ isOpen, onClose, type, title }: DetailModalProps) 
           </TableRow>
         ));
       case "certificados-vencidos":
-        return data.map((item, index) => (
+        return rows.map((item, index) => (
           <TableRow key={index}>
             <TableCell className="font-medium">{item.nombre}</TableCell>
             <TableCell>{item.tipo}</TableCell>
@@ -135,7 +264,7 @@ export const DetailModal = ({ isOpen, onClose, type, title }: DetailModalProps) 
           </TableRow>
         ));
       case "ingresos":
-        return data.map((item, index) => (
+        return rows.map((item, index) => (
           <TableRow key={index}>
             <TableCell className="font-medium">{item.concepto}</TableCell>
             <TableCell>{item.monto}</TableCell>
@@ -152,8 +281,6 @@ export const DetailModal = ({ isOpen, onClose, type, title }: DetailModalProps) 
     }
   };
 
-  const data = getDetailData(type);
-
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
@@ -164,19 +291,28 @@ export const DetailModal = ({ isOpen, onClose, type, title }: DetailModalProps) 
         </DialogHeader>
 
         <div className="mt-6">
-          <Table>
-            <TableHeader>
-              {renderTableHeaders(type)}
-            </TableHeader>
-            <TableBody>
-              {renderTableRows(type, data)}
-            </TableBody>
-          </Table>
-
-          {data.length === 0 && (
-            <div className="text-center py-8 text-muted-foreground">
-              No hay datos disponibles
+          {isLoading ? (
+            <div className="flex items-center justify-center py-12 text-muted-foreground gap-2">
+              <Loader2 className="w-5 h-5 animate-spin text-primary" />
+              <span>Cargando información...</span>
             </div>
+          ) : (
+            <>
+              <Table>
+                <TableHeader>
+                  {renderTableHeaders(type)}
+                </TableHeader>
+                <TableBody>
+                  {renderTableRows(type, data)}
+                </TableBody>
+              </Table>
+
+              {data.length === 0 && (
+                <div className="text-center py-8 text-muted-foreground">
+                  No hay registros disponibles para este período
+                </div>
+              )}
+            </>
           )}
         </div>
       </DialogContent>

@@ -1,0 +1,17 @@
+name: Keep Supabase Alive
+
+on:
+  schedule:
+    # Se ejecuta a las 00:00 UTC cada miércoles y domingo (dos veces por semana)
+    - cron: '0 0 * * 3,0'
+  workflow_dispatch: # Permite ejecutarlo manualmente desde la pestaña de Actions en GitHub
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Supabase Database
+        run: |
+          curl -f -X GET \
+            -H "apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind4ZXhtb3phcnFsdmZleHFhanZuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM3OTQ4OTYsImV4cCI6MjA2OTM3MDg5Nn0.H7HwvxJ-8dYb55YJ-mKXbj-z6_H7mKAaT2fUbLC2U9M" \
+            "https://wxexmozarqlvfexqajvn.supabase.co/rest/v1/students?select=id&limit=1"
