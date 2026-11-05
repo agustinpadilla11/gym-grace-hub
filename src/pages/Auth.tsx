@@ -58,9 +58,13 @@ export const Auth = ({ onAuthSuccess }: AuthProps) => {
       });
 
       if (error) {
+        let errorDescription = error.message;
+        if (error.message.includes("Failed to fetch") || error.message.includes("NetworkError")) {
+          errorDescription = "No se pudo conectar con el servidor de Supabase. Es probable que el proyecto esté pausado por inactividad en supabase.com. Por favor reanúdalo desde el panel.";
+        }
         toast({
           title: "Error de inicio de sesión",
-          description: error.message,
+          description: errorDescription,
           variant: "destructive",
         });
         return;
@@ -71,10 +75,14 @@ export const Auth = ({ onAuthSuccess }: AuthProps) => {
         description: "Has iniciado sesión correctamente",
       });
       onAuthSuccess();
-    } catch (error) {
+    } catch (error: any) {
+      let message = "Ocurrió un error inesperado";
+      if (error?.message?.includes("Failed to fetch") || error?.name === "TypeError") {
+        message = "No se pudo conectar con el servidor de Supabase. Es probable que el proyecto esté pausado por inactividad en supabase.com. Por favor reanúdalo desde el panel de Supabase.";
+      }
       toast({
-        title: "Error",
-        description: "Ocurrió un error inesperado",
+        title: "Error de conexión",
+        description: message,
         variant: "destructive",
       });
     } finally {
@@ -183,6 +191,7 @@ export const Auth = ({ onAuthSuccess }: AuthProps) => {
                     <Input
                       id="login-email"
                       type="email"
+                      autoComplete="username"
                       placeholder="tu@email.com"
                       className="pl-10"
                       value={loginData.email}
@@ -199,6 +208,7 @@ export const Auth = ({ onAuthSuccess }: AuthProps) => {
                     <Input
                       id="login-password"
                       type={showPassword ? "text" : "password"}
+                      autoComplete="current-password"
                       placeholder="••••••••"
                       className="pl-10 pr-10"
                       value={loginData.password}
@@ -248,6 +258,7 @@ export const Auth = ({ onAuthSuccess }: AuthProps) => {
                     <Input
                       id="signup-email"
                       type="email"
+                      autoComplete="username"
                       placeholder="tu@email.com"
                       className="pl-10"
                       value={signupData.email}
@@ -264,6 +275,7 @@ export const Auth = ({ onAuthSuccess }: AuthProps) => {
                     <Input
                       id="signup-password"
                       type={showPassword ? "text" : "password"}
+                      autoComplete="new-password"
                       placeholder="••••••••"
                       className="pl-10 pr-10"
                       value={signupData.password}
@@ -291,6 +303,7 @@ export const Auth = ({ onAuthSuccess }: AuthProps) => {
                   <Input
                     id="signup-confirm"
                     type={showPassword ? "text" : "password"}
+                    autoComplete="new-password"
                     placeholder="••••••••"
                     value={signupData.confirmPassword}
                     onChange={(e) =>

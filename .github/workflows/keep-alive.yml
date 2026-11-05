@@ -2,16 +2,35 @@ name: Keep Supabase Alive
 
 on:
   schedule:
-    # Se ejecuta a las 00:00 UTC cada miércoles y domingo (dos veces por semana)
-    - cron: '0 0 * * 3,0'
+    # Se ejecuta a las 05:00 UTC cada 2 días para evitar que Supabase pause el proyecto por inactividad (el límite gratuito es 7 días)
+    - cron: '0 5 */2 * *'
   workflow_dispatch: # Permite ejecutarlo manualmente desde la pestaña de Actions en GitHub
 
 jobs:
   ping:
     runs-on: ubuntu-latest
     steps:
-      - name: Ping Supabase Database
+      - name: Ping Supabase Services
         run: |
-          curl -f -X GET \
-            -H "apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind4ZXhtb3phcnFsdmZleHFhanZuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM3OTQ4OTYsImV4cCI6MjA2OTM3MDg5Nn0.H7HwvxJ-8dYb55YJ-mKXbj-z6_H7mKAaT2fUbLC2U9M" \
-            "https://wxexmozarqlvfexqajvn.supabase.co/rest/v1/students?select=id&limit=1"
+          SUPABASE_URL="https://wxexmozarqlvfexqajvn.supabase.co"
+          SUPABASE_KEY="${{ secrets.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind4ZXhtb3phcnFsdmZleHFhanZuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM3OTQ4OTYsImV4cCI6MjA2OTM3MDg5Nn0.H7HwvxJ-8dYb55YJ-mKXbj-z6_H7mKAaT2fUbLC2U9M' }}"
+
+          echo "Pinging Supabase Database & Auth at $SUPABASE_URL ..."
+
+          # 1. Ping Auth Service
+          AUTH_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$SUPABASE_URL/auth/v1/health" || echo "failed")
+          echo "Auth health response code: $AUTH_STATUS"
+
+          # 2. Ping REST / Database API
+          REST_STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+            -H "apikey: $SUPABASE_KEY" \
+            -H "Authorization: Bearer $SUPABASE_KEY" \
+            "$SUPABASE_URL/rest/v1/students?select=id&limit=1" || echo "failed")
+          echo "REST API response code: $REST_STATUS"
+
+          if [ "$REST_STATUS" = "failed" ] || [ "$AUTH_STATUS" = "failed" ]; then
+            echo "::error::No se pudo resolver o contactar el dominio de Supabase ($SUPABASE_URL). Es probable que el proyecto esté pausado por inactividad en https://supabase.com/dashboard. Ve al panel de Supabase y haz clic en 'Restore project' para reactivarlo."
+            exit 1
+          fi
+
+          echo "Supabase ping successful! Activity registered."
